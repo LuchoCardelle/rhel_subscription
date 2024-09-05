@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Solicitar nombre de usuario y contraseña
+read -p "Introduce tu nombre de usuario de Red Hat: " RH_USERNAME
+read -s -p "Introduce tu contraseña de Red Hat: " RH_PASSWORD
+echo ""
+
+# Verificar si el usuario es root
+if [ "$EUID" -ne 0 ]; then
+  echo "Por favor, ejecuta este script como root o usa sudo."
+  exit 1
+fi
+
+# Actualizar paquetes del sistema
+echo "Actualizando los paquetes del sistema..."
+yum update -y
+echo "Paquetes actualizados."
+
+# Verificar e instalar subscription-manager si es necesario
+if ! command -v subscription-manager &> /dev/null; then
+  echo "subscription-manager no está instalado. Instalando subscription-manager..."
+  yum install subscription-manager -y
+  echo "subscription-manager instalado."
+else
+  echo "subscription-manager ya está instalado."
+fi
+
+# Registrar el sistema
+echo "Registrando el sistema en Red Hat..."
+subscription-manager register --username="$RH_USERNAME" --password="$RH_PASSWORD"
+
+if [ $? -eq 0 ]; then
+  echo "Sistema registrado exitosamente."
+else
+  echo "Error al registrar el sistema. Verifica tus credenciales."
+  exit 1
+fi
+
+# Adjuntar suscripción automáticamente
+echo "Adjuntando suscripción automáticamente..."
+subscription-manager attach --auto
+
+if [ $? -eq 0 ]; then
+  echo "Suscripción adjuntada exitosamente."
+else
+  echo "Error al adjuntar la suscripción. Puede que no haya una suscripción disponible."
+  exit 1
+fi
+
+# Verificar el estado de la suscripción
+echo "Verificando el estado de la suscripción..."
+subscription-manager status
+
+# Actualizar repositorios
+echo "Actualizando la lista de repositorios..."
+yum repolist
+echo "Lista de repositorios actualizada."
+
+echo "Proceso completado."
